@@ -8,7 +8,7 @@ with open('README.md') as f:
 # This call to setup() does all the work
 setup(
     name="MDOF-toybox",
-    version="0.0.1",
+    version="0.0.2",
     description="Tooling to generate toy MDOF dynamics data for arbitrary linear and nonlinear systems in python",
     long_description=rm,
     long_description_content_type="text/markdown",
@@ -18,7 +18,7 @@ setup(
     license="MIT",
     classifiers=[
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3.4+",
+        "Programming Language :: Python :: 3.x",
     ],
     packages=['toybox'],
     package_dir={'':'src'},
