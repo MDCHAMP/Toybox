@@ -41,7 +41,7 @@ class integrator():
         return x1 + (t - t1)*(x2 - x1)/(t2 - t1)
 
     def __call__(self):
-        self.sim()
+        return self.sim()
 
     def sim(self):
         raise NotImplementedError('No integrator selected')
@@ -84,4 +84,4 @@ class rk4(integrator):
             # Update state
             out[i+1, :] = w + (k1 + 2.0*k2 + 2.0*k3 + k4) * (dt/6.0)
         # Return [y1, ydot1, y2, ydot2, ..., yd, ydotd]
-        return out[:len(self.ts)]
+        return out[:len(self.ts)].T # Transpose for some reason

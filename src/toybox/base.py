@@ -83,20 +83,20 @@ class system():
             self.slopes = self.get_slopes()
         if integrator is None:
             integrator = rk4
-        self.response = integrator(self.slopes, w0, ts, xs).sim()
+        self.response = integrator(self.slopes, w0, ts, xs)()
         return self.response
 
     def normalise(self):
         # Recovering the offset and scale params so we can recover original after analysis
-        self.offset = np.mean(self.response, axis=0)
-        self.scale = np.std(self.response, axis=0)
-        self.response = (self.response - self.offset) / self.scale
+        self.offset = np.mean(self.response, axis=1)
+        self.scale = np.std(self.response, axis=1)
+        self.response = ((self.response.T - self.offset) / self.scale).T
         return self.response
 
     def denormalise(self):
         # Recovering the original signal
         try:
-            self.response = (self.response * self.scale) + self.offset
+            self.response = ((self.response.T * self.scale) + self.offset).T
         except AttributeError:
             # Not normalised yet
             pass
