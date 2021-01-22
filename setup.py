@@ -7,9 +7,9 @@ with open('README.md') as f:
 
 # This call to setup() does all the work
 setup(
-    name="toybox",
+    name="MDOF-toybox",
     version="0.0.1",
-    description="Heuristic and meta-heuristic optimisation suite in Python",
+    description="Tooling to generate toy MDOF dynamics data for arbitrary linear and nonlinear systems in python",
     long_description=rm,
     long_description_content_type="text/markdown",
     url="https://github.com/MDCHAMP/Toybox",
