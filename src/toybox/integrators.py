@@ -1,0 +1,87 @@
+'''
+submodule for integrators that generate time series
+
+API TBC
+
+Only IC problems considered for now
+'''
+
+
+import numpy as np
+
+
+# %% Base class
+
+
+class integrator():
+    '''
+    Base class for integrators
+    '''
+    name = 'integrator'
+    returns = ['y', 'ydot', 'yddot']
+
+    def __init__(self, vector_field, w0, ts, xs=None):
+        self.vector_field = vector_field
+        self.ts = ts
+        self.dt = ts[1] - ts[0]
+        self.w0 = w0
+        if xs is None:
+            self.xs = np.zeros((ts.shape[0]+10, len(w0)//2))
+
+    def get_x(self, t):
+        '''
+        Interpolate for the forcing between timesteps
+        '''
+        ind1 = int(t-self.ts[0] // self.dt)
+        ind2 = ind1 + 1
+        x1 = self.xs[ind1, :]
+        x2 = self.xs[ind2, :]
+        t1 = ((ind1) * self.dt) + self.ts[0]
+        t2 = ((ind2) * self.dt) + self.ts[0]
+        return x1 + (t - t1)*(x2 - x1)/(t2 - t1)
+
+    def __call__(self):
+        self.sim()
+
+    def sim(self):
+        raise NotImplementedError('No integrator selected')
+
+
+# %% Integrators
+
+
+class rk4(integrator):
+    '''
+    Fixed step 4th order integrator
+    '''
+    name = 'Runge-Kutta 4th order'
+    returns = ['y', 'ydot']
+
+    def sim(self):
+        '''
+        Perform simulation
+        '''
+        out = np.zeros((len(self.ts)+1, len(self.w0)))
+        out[0, :] = np.array(self.w0)
+        dt = self.dt
+        vf = self.vector_field
+        # Main loop
+        for i, t in enumerate(self.ts):
+            # Get time steps
+            t1 = t
+            t2 = t + 0.5*dt
+            t3 = t + dt
+            # Get forces
+            x1 = self.get_x(t1)
+            x2 = self.get_x(t2)
+            x3 = self.get_x(t3)
+            # Calculate slopes
+            w = out[i]
+            k1 = (vf)(w, t, x1)
+            k2 = vf(w + (0.5 * dt * k1), t2, x2)
+            k3 = vf(w + (0.5 * dt * k2), t2, x2)
+            k4 = vf(w + (dt * k3),       t3, x3)
+            # Update state
+            out[i+1, :] = w + (k1 + 2.0*k2 + 2.0*k3 + k4) * (dt/6.0)
+        # Return [y1, ydot1, y2, ydot2, ..., yd, ydotd]
+        return out[:len(self.ts)]
