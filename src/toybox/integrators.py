@@ -27,7 +27,8 @@ class integrator():
         self.w0 = w0
         if xs is None:
             self.xs = np.zeros((ts.shape[0]+10, len(w0)//2))
-
+        else:
+            self.xs = xs
     def get_x(self, t):
         '''
         Interpolate for the forcing between timesteps
