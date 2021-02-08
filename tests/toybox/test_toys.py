@@ -16,10 +16,8 @@ def test_is_imported_correctly():
 def test_requrements_satisfied():
     assert 'numpy' in sys.modules
 
-
-
 @pytest.mark.parametrize('s', systems)
-def test_load(s):
+def test_square(s):
     assert s.M.shape[0] == s.M.shape[1]
     assert s.C.shape[0] == s.C.shape[1]
     assert s.K.shape[0] == s.K.shape[1]
@@ -29,7 +27,8 @@ def test_simulate(s):
     ts = np.linspace(0, 10, 1000)
     w0 = np.zeros((2*s.dofs,))
     w0[0] = 1
-    s.simulate(w0, ts)
+    xs = np.zeros((s.dofs,1000)).T
+    s.simulate(w0, ts, xs)
     for sig in s.response:
         assert sig.shape == ts.shape
         assert not any(np.isnan(sig))
