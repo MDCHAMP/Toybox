@@ -3,15 +3,17 @@ import sys
 import numpy as np
 
 from toybox.premade import *
+from toybox.forcings import *
 
 systems = [symetric(2), symetric(1, 1, 1),
            underdamped_SDOF(), criticalydamped_SDOF(),
            overdamped_SDOF(), duffing_SDOF()]
 
+excitations = [white_gaussian(0,1)]
+
 
 def test_is_imported_correctly():
     assert 'toybox' in sys.modules
-
 
 def test_requrements_satisfied():
     assert 'numpy' in sys.modules
@@ -47,3 +49,8 @@ def test_normalise(s):
     for sig, scale, offset in zip(s.response, s.scale, s.offset):
         assert (np.std(sig) - scale) < 10**-3
         assert (np.mean(sig) - offset) < 10**-3
+
+@pytest.mark.parametrize('f', excitations)
+def test_forcings(f):
+    x = f.generate(100, 10)
+    assert x.shape == (100, 10)
