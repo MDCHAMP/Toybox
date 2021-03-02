@@ -12,8 +12,8 @@ class white_gaussian(excitation):
         self.u = u
         self.sig = sig
 
-    def generate(self, n, d):
-        return np.zeros((n,d))
+    def generate(self, n):
+        return np.random.normal(self.u, self.sig, size=(n, 1))
 
 
 class sinusoid(excitation):
@@ -32,11 +32,11 @@ class shaker():
         self.excitations = excitations
     
     def generate(self, n):
-        out = np.zeros((n, len(self.excitations)))
+        out = np.zeros((len(self.excitations), n))
         for i, e in enumerate(self.excitations):
             if isinstance(e, excitation):
-                out[i,:] = e.generate(n)
+                out[i,:] = np.squeeze(e.generate(n))
             else: 
                 out[i,:] = np.zeros(n)
-        return out
+        return out.T
 

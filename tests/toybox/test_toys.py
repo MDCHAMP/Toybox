@@ -29,7 +29,10 @@ def test_simulate(s):
     ts = np.linspace(0, 10, 1000)
     w0 = np.zeros((2*s.dofs,))
     w0[0] = 1
-    imp = np.zeros((s.dofs,1000)).T
+    ins = [None for i in range(s.dofs)] 
+    ins[0] = white_gaussian(0,1)
+    x_gen = shaker(ins)
+    imp = x_gen.generate(1000)
     s.simulate(w0, ts, xs=imp)
     for sig in s.response:
         assert sig.shape == ts.shape
@@ -52,5 +55,5 @@ def test_normalise(s):
 
 @pytest.mark.parametrize('f', excitations)
 def test_forcings(f):
-    x = f.generate(100, 10)
-    assert x.shape == (100, 10)
+    x = f.generate(100)
+    assert x.shape == (100, 1)
