@@ -27,8 +27,8 @@ def test_simulate(s):
     ts = np.linspace(0, 10, 1000)
     w0 = np.zeros((2*s.dofs,))
     w0[0] = 1
-    xs = np.zeros((s.dofs,1000)).T
-    s.simulate(w0, ts, xs)
+    imp = np.zeros((s.dofs,1000)).T
+    s.simulate(w0, ts, xs=imp)
     for sig in s.response:
         assert sig.shape == ts.shape
         assert not any(np.isnan(sig))

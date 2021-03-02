@@ -25,10 +25,9 @@ class integrator():
         self.ts = ts
         self.dt = ts[1] - ts[0]
         self.w0 = w0
-        if xs is None:
-            self.xs = np.zeros((ts.shape[0]+10, len(w0)//2))
-        else:
-            self.xs = xs
+        if xs is None: self.xs = np.zeros((ts.shape[0]+10, len(w0)//2))
+        else: self.xs = xs
+
     def get_x(self, t):
         '''
         Interpolate for the forcing between timesteps
@@ -37,8 +36,8 @@ class integrator():
         ind2 = ind1 + 1
         x1 = self.xs[ind1, :]
         x2 = self.xs[ind2, :]
-        t1 = ((ind1) * self.dt) + self.ts[0]
-        t2 = ((ind2) * self.dt) + self.ts[0]
+        t1 = (ind1 * self.dt) + self.ts[0]
+        t2 = (ind2 * self.dt) + self.ts[0]
         return x1 + (t - t1)*(x2 - x1)/(t2 - t1)
 
     def __call__(self):
@@ -57,6 +56,9 @@ class rk4(integrator):
     '''
     name = 'Runge-Kutta 4th order'
     returns = ['y', 'ydot']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def sim(self):
         '''
@@ -78,7 +80,7 @@ class rk4(integrator):
             x3 = self.get_x(t3)
             # Calculate slopes
             w = out[i]
-            k1 = (vf)(w, t, x1)
+            k1 = vf(w, t, x1)
             k2 = vf(w + (0.5 * dt * k1), t2, x2)
             k3 = vf(w + (0.5 * dt * k2), t2, x2)
             k4 = vf(w + (dt * k3),       t3, x3)
