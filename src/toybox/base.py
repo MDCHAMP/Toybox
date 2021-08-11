@@ -2,9 +2,11 @@
 Base classes for toybox
 '''
 
+import warnings
 import numpy as np
 
 from toybox.integrators import rk4
+from toybox.forcings import shaker
 
 # %% Notation reference
 
@@ -61,7 +63,7 @@ class system():
             _ydot = w[1::2]
             # Calculate field = [ydot1, yddot1, ydot2, yddot2, ..., ydotd, yddotd] etc...
             m_inv = np.linalg.inv(self.M),
-            damping = np.dot(self.C,_ydot)
+            damping = np.dot(self.C, _ydot)
             stiffness = np.dot(self.K, _y)
             if self.N is None:
                 nonlinearity = np.zeros_like(x)
@@ -78,20 +80,36 @@ class system():
             return field
         return vector_field
 
-    def simulate(self, w0, ts, xs=None, integrator=None):
+    def simulate(self, ts, w0=None, xs=None, integrator=None, normalise=False):
+        if type(ts) is tuple:
+            npts, fs = ts
+            self.ts = np.linspace(0, npts*fs, npts)
+        if xs is None:
+            try:
+                self.xs = shaker(self.excitation).generate(npts)
+            except AttributeError:
+                warnings.warn(
+                    'No Excitations provided proceeding without forcing', UserWarning)
+                self.xs = shaker([None]*self.dofs).generate(npts)
+        if w0 is None:
+            warnings.warn(
+                'No initial conditions provided proceeding without', UserWarning)
+            w0 = np.zeros((self.dofs*2,))
         if self.slopes is None:
             self.slopes = self.get_slopes()
         if integrator is None:
             integrator = rk4
-        self.response = integrator(self.slopes, w0, ts, xs)()
-        return self.response
+        self.response = integrator(self.slopes, w0, self.ts, self.xs)()
+        if normalise:
+            self.normalise()
+        return self._to_dict()
 
     def normalise(self):
         # Recovering the offset and scale params so we can recover original after analysis
         self.offset = np.mean(self.response, axis=1)
         self.scale = np.std(self.response, axis=1)
         self.response = ((self.response.T - self.offset) / self.scale).T
-        return self.response
+        return self._to_dict()
 
     def denormalise(self):
         # Recovering the original signal
@@ -100,7 +118,7 @@ class system():
         except AttributeError:
             # Not normalised yet
             pass
-        return self.response
+        return self._to_dict()
 
     def linear_modes(self):
         # Return (eigenvectors, eigenvalues) of the underlying linear system (No damping)
@@ -109,3 +127,19 @@ class system():
     def linear_exact(self, ts):
         # Return exact (within numerical tolerance) solution of underlying linear system
         raise NotImplementedError
+
+    def _to_dict(self):
+        if not hasattr(self, 'response'):
+            raise UserWarning('System not simulated cannot produce dict')
+        ys = self.response[0::2]
+        ydots = self.response[1::2]
+        out = {}
+        out['t'] = self.ts
+        for doff, x, y, ydot in zip(range(1, self.dofs+1), self.xs.T, ys, ydots):
+            out[f'x{doff}'] = x
+            out[f'y{doff}'] = y
+            out[f'ydot{doff}'] = ydot
+        return out
+
+
+# %%

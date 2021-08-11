@@ -2,14 +2,13 @@ import pytest
 import sys
 import numpy as np
 
+import toybox as tb
 from toybox.premade import *
 from toybox.forcings import *
 
-systems = [symetric(2), symetric(1, 1, 1),
+systems = [symetric(2), symetric(2, m=1, c=20, k=1e3),
            underdamped_SDOF(), criticalydamped_SDOF(),
            overdamped_SDOF(), duffing_SDOF()]
-
-excitations = [white_gaussian(0,1)]
 
 
 def test_is_imported_correctly():
@@ -25,26 +24,21 @@ def test_square(s):
     assert s.K.shape[0] == s.K.shape[1]
 
 @pytest.mark.parametrize('s', systems)
-def test_simulate(s):
-    ts = np.linspace(0, 10, 1000)
-    w0 = np.zeros((2*s.dofs,))
-    w0[0] = 1
+def test_simulate_simple(s):
     ins = [None for i in range(s.dofs)] 
     ins[0] = white_gaussian(0,1)
-    x_gen = shaker(ins)
-    imp = x_gen.generate(1000)
-    s.simulate(w0, ts, xs=imp)
+    s.excitation = ins
+    s.simulate((1000, 1/200))
     for sig in s.response:
-        assert sig.shape == ts.shape
+        assert sig.shape[0] == 1000
         assert not any(np.isnan(sig))
 
 @pytest.mark.parametrize('s', systems)
 def test_normalise(s):
-    ts = np.linspace(0, 10, 1000)
-    w0 = np.zeros((2*s.dofs,))
-    w0[0] = 1
-    s.simulate(w0, ts)
-    s.normalise()
+    ins = [None for i in range(s.dofs)] 
+    ins[0] = white_gaussian(0,1)
+    s.excitation = ins
+    s.simulate((1000, 1/100), normalise=True)
     for sig in s.response:
         assert (np.std(sig) - 1) < 10**-3
         assert (np.mean(sig) - 0) < 10**-3 
@@ -53,7 +47,13 @@ def test_normalise(s):
         assert (np.std(sig) - scale) < 10**-3
         assert (np.mean(sig) - offset) < 10**-3
 
-@pytest.mark.parametrize('f', excitations)
-def test_forcings(f):
-    x = f.generate(100)
-    assert x.shape == (100, 1)
+
+
+def test_easy_setup():
+    def quadratic_cubic_stiffness_2dof_single(_, t, y, ydot):
+        return np.dot(y**2, np.array([5e7, 0])) + np.dot(y**3, np.array([1e9, 0]))
+
+    system = tb.symetric(dofs=2, m=1, c=20, k=1e5)
+    system.N = quadratic_cubic_stiffness_2dof_single
+    system.excitation = [tb.forcings.white_gaussian(0, 1), None]
+    system.simulate((1000, 1/500),  normalise=True)

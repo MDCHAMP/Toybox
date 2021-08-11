@@ -25,20 +25,19 @@ class integrator():
         self.ts = ts
         self.dt = ts[1] - ts[0]
         self.w0 = w0
-        if xs is None: self.xs = np.zeros((ts.shape[0]+10, len(w0)//2))
+        self.dofs = len(self.w0)//2
+        if xs is None: self.xs = np.zeros((ts.shape[0]+10, self.dofs))
         else: self.xs = xs
 
     def get_x(self, t):
         '''
         Interpolate for the forcing between timesteps
         '''
-        ind1 = int(t-self.ts[0] // self.dt)
-        ind2 = ind1 + 1
-        x1 = self.xs[ind1, :]
-        x2 = self.xs[ind2, :]
-        t1 = (ind1 * self.dt) + self.ts[0]
-        t2 = (ind2 * self.dt) + self.ts[0]
-        return x1 + (t - t1)*(x2 - x1)/(t2 - t1)
+        x = np.zeros((self.dofs, ))
+        for dof in range(self.dofs):
+            x[dof] = np.interp(t, self.ts, self.xs[:,dof])
+
+        return x
 
     def __call__(self):
         return self.sim()
@@ -69,7 +68,7 @@ class rk4(integrator):
         dt = self.dt
         vf = self.vector_field
         # Main loop
-        for i, t in enumerate(self.ts):
+        for i, t in enumerate(self.ts[:]):
             # Get time steps
             t1 = t
             t2 = t + 0.5*dt

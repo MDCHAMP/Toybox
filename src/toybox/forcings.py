@@ -36,6 +36,9 @@ class shaker():
         for i, e in enumerate(self.excitations):
             if isinstance(e, excitation):
                 out[i,:] = np.squeeze(e.generate(n))
+            elif False:
+                # TODO handle custom forcing here  
+                out[i,:] = e
             else: 
                 out[i,:] = np.zeros(n)
         return out.T
