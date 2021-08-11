@@ -106,9 +106,12 @@ class system():
 
     def normalise(self):
         # Recovering the offset and scale params so we can recover original after analysis
-        self.offset = np.mean(self.response, axis=1)
-        self.scale = np.std(self.response, axis=1)
-        self.response = ((self.response.T - self.offset) / self.scale).T
+        try:
+            self.offset = np.mean(self.response, axis=1)
+            self.scale = np.std(self.response, axis=1)
+            self.response = ((self.response.T - self.offset) / self.scale).T
+        except AttributeError:
+            raise AttributeError('Not simulated yet')
         return self._to_dict()
 
     def denormalise(self):
@@ -116,8 +119,8 @@ class system():
         try:
             self.response = ((self.response.T * self.scale) + self.offset).T
         except AttributeError:
-            # Not normalised yet
-            pass
+            raise AttributeError('Not normalised yet')
+
         return self._to_dict()
 
     def linear_modes(self):

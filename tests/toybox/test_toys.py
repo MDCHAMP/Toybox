@@ -57,3 +57,26 @@ def test_easy_setup():
     system.N = quadratic_cubic_stiffness_2dof_single
     system.excitation = [tb.forcings.white_gaussian(0, 1), None]
     system.simulate((1000, 1/500),  normalise=True)
+
+
+
+def test_misc():
+    M = np.array([[1, 0], 
+                  [0, 2]])
+    C = np.array([[23, -12],
+                  [-8, -11]])
+    K = np.array([[18, -5],
+                  [-1, -23]])
+    system = tb.system(M=M, C=C, K=K)
+    system.N = tb.nonlinearities.cubic_stifness(2, kn3=None) 
+    with pytest.raises(UserWarning):
+        system._to_dict()
+
+    with pytest.raises(AttributeError):
+        system.normalise()
+    
+    with pytest.raises(AttributeError):
+        system.denormalise()
+
+    system.simulate((100, 1/500))
+    
