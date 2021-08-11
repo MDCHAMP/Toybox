@@ -132,3 +132,4 @@ dmypy.json
 # Vscode specific
 .vscode/
 *.code-workspace
+tests/toybox/test_plots.py
