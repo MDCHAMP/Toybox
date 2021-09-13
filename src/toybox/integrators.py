@@ -11,8 +11,6 @@ import numpy as np
 
 
 # %% Base class
-
-
 class integrator():
     '''
     Base class for integrators
@@ -20,29 +18,13 @@ class integrator():
     name = 'integrator'
     returns = ['y', 'ydot', 'yddot']
 
-    def __init__(self, vector_field, w0, ts, xs=None):
-        self.vector_field = vector_field
-        self.ts = ts
-        self.dt = ts[1] - ts[0]
-        self.w0 = w0
-        self.dofs = len(self.w0)//2
-        if xs is None: self.xs = np.zeros((ts.shape[0]+10, self.dofs))
-        else: self.xs = xs
-
-    def get_x(self, t):
-        '''
-        Interpolate for the forcing between timesteps
-        '''
-        x = np.zeros((self.dofs, ))
-        for dof in range(self.dofs):
-            x[dof] = np.interp(t, self.ts, self.xs[:,dof])
-
-        return x
+    def __init__(self):
+        pass
 
     def __call__(self):
         return self.sim()
 
-    def sim(self):
+    def sim(self, vector_field, w0, ts):
         raise NotImplementedError('No integrator selected')
 
 
@@ -56,10 +38,12 @@ class rk4(integrator):
     name = 'Runge-Kutta 4th order'
     returns = ['y', 'ydot']
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def sim(self):
+    def sim(self, vector_field, w0, ts):
+        self.vector_field = vector_field
+        self.ts = ts
+        self.dt = ts[1] - ts[0]
+        self.w0 = w0
+        self.dofs = len(self.w0)//2
         '''
         Perform simulation
         '''
@@ -73,17 +57,36 @@ class rk4(integrator):
             t1 = t
             t2 = t + 0.5*dt
             t3 = t + dt
-            # Get forces
-            x1 = self.get_x(t1)
-            x2 = self.get_x(t2)
-            x3 = self.get_x(t3)
             # Calculate slopes
             w = out[i]
-            k1 = vf(w, t, x1)
-            k2 = vf(w + (0.5 * dt * k1), t2, x2)
-            k3 = vf(w + (0.5 * dt * k2), t2, x2)
-            k4 = vf(w + (dt * k3),       t3, x3)
+            k1 = vf(t,  w)
+            k2 = vf(t2, w + (0.5 * dt * k1))
+            k3 = vf(t2, w + (0.5 * dt * k2))
+            k4 = vf(t3, w + (dt * k3))
             # Update state
             out[i+1, :] = w + (k1 + 2.0*k2 + 2.0*k3 + k4) * (dt/6.0)
         # Return [y1, ydot1, y2, ydot2, ..., yd, ydotd]
-        return out[:len(self.ts)].T # Transpose for some reason
+        return out[:len(self.ts)].T  # Transpose for some reason
+
+
+class scipy(integrator):
+    '''
+    Wraps the SciPy solve_IVP / odeint class for use with toybox, does not require SciPy as a dependency because the function
+    is passed directly to this class constructor.
+    '''
+
+    def __init__(self, solver, args={}):
+        self.solver = solver
+        self.args = args
+
+    def sim(self, vector_field, w0, ts):
+        if self.solver.__name__ == 'solve_ivp':
+            tspan = (min(ts), max(ts))
+            self.full_res = self.solver(
+                vector_field, tspan, w0, t_eval=ts, **self.args)
+            return self.full_res.y
+        elif self.solver.__name__ == 'odeint':
+            self.full_res = self.solver(
+                vector_field, w0, ts, tfirst=True, **self.args)
+            return self.full_res.y
+

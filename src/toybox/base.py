@@ -5,7 +5,7 @@ Base classes for toybox
 import warnings
 import numpy as np
 
-from toybox.integrators import rk4
+from toybox.integrators import integrator, rk4
 from toybox.forcings import shaker
 
 # %% Notation reference
@@ -55,51 +55,58 @@ class system():
         self.N = N
         self.dofs = M.shape[0]
         self.slopes = None
+        self.excitation = [None] * self.dofs
 
-    def get_slopes(self):
-        def vector_field(w, t, x):
+    def get_slopes(self, x_t=None):
+        if x_t is None: x_t = lambda t: np.zeros((self.dofs,)) #Handle the no forcing case
+        if self.N is None: self.N =lambda _, t, _y, _ydot: np.zeros((self.dofs,)) # Handle the non nonlinearity case
+        
+        def vector_field(t, w):
+            x = x_t(t) # Get x from x_t
             # Recover displacements and velocities from current timestep
             _y = w[0::2]
             _ydot = w[1::2]
-            # Calculate field = [ydot1, yddot1, ydot2, yddot2, ..., ydotd, yddotd] etc...
-            m_inv = np.linalg.inv(self.M),
-            damping = np.dot(self.C, _ydot)
-            stiffness = np.dot(self.K, _y)
-            if self.N is None:
-                nonlinearity = np.zeros_like(x)
-            else:
-                nonlinearity = self.N(self, t, _y, _ydot)
-            lhs = (x - damping - stiffness - nonlinearity)
-            lhs = np.dot(m_inv, lhs)
-            ydot = _ydot
-            yddot = lhs
-            # Interleave vectors to reform state vector
-            field = np.empty((ydot.size + ydot.size,), dtype=ydot.dtype)
-            field[0::2] = ydot
-            field[1::2] = yddot
-            return field
+            # Calculate the derivatives of _y and _ydot and interleave vectors to form d w / dt
+            dw = np.zeros_like(w) # pre-allocate 
+            dw[0::2] = _ydot
+            dw[1::2] = np.linalg.inv(self.M) @ (x - (self.C@_ydot) - self.K@_y - self.N(self, t, _y, _ydot))
+            return dw
+        
         return vector_field
 
-    def simulate(self, ts, w0=None, xs=None, integrator=None, normalise=False):
+    def simulate(self, ts, x_t=None,  w0=None, integrator=None, normalise=False):
+        #  Time vector: self.ts ndarray (n, 1)
         if type(ts) is tuple:
-            npts, fs = ts
-            self.ts = np.linspace(0, npts*fs, npts)
-        if xs is None:
+            npts, dt = ts
+            self.ts = np.linspace(0, npts*dt, npts)
+        else:
+            npts = len(ts)
+            fs   = 1 / (ts[1] - ts[0])   
+        # Excitations: self.x_t callable x_t(t) -> x
+        if x_t is None:
             try:
-                self.xs = shaker(self.excitation).generate(npts)
+                self.shaker = shaker(self.excitation)
             except AttributeError:
                 warnings.warn(
-                    'No Excitations provided proceeding without forcing', UserWarning)
-                self.xs = shaker([None]*self.dofs).generate(npts)
+                    'No Excitations provided proceeding without external forcing', UserWarning)
+                self.shaker = shaker([None]*self.dofs)
+            self.xs = self.shaker.generate(self.ts) # Save the forcing history
+            x_t = self.shaker.get_x_t(self.ts, self.xs)
+        else:
+            self.xs = np.array([x_t(t) for t in self.ts])[:, None] # Add a dummy index to make the integrators happy later
+        # ICs
         if w0 is None:
             warnings.warn(
-                'No initial conditions provided proceeding without', UserWarning)
+                'No initial conditions provided proceeding with zero initial condition', UserWarning)
             w0 = np.zeros((self.dofs*2,))
+        # d w / dt
         if self.slopes is None:
-            self.slopes = self.get_slopes()
+            self.slopes = self.get_slopes(x_t)
+        # Integrator
         if integrator is None:
-            integrator = rk4
-        self.response = integrator(self.slopes, w0, self.ts, self.xs)()
+            integrator = rk4()
+        # Simulate
+        self.response = integrator.sim(self.slopes, w0, self.ts)
         if normalise:
             self.normalise()
         return self._to_dict()
@@ -133,7 +140,7 @@ class system():
 
     def _to_dict(self):
         if not hasattr(self, 'response'):
-            raise UserWarning('System not simulated cannot produce dict')
+            raise UserWarning('System not simulated cannot produce results. Call System.simulate()')
         ys = self.response[0::2]
         ydots = self.response[1::2]
         out = {}
@@ -144,5 +151,3 @@ class system():
             out[f'ydot{doff}'] = ydot
         return out
 
-
-# %%

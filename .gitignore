@@ -133,3 +133,5 @@ dmypy.json
 .vscode/
 *.code-workspace
 tests/toybox/test_plots.py
+tests/toybox/X_old.py
+tests/toybox/X_plots.py

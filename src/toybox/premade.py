@@ -12,7 +12,7 @@ from toybox.base import system
 
 class symetric(system):
     '''
-    Symmetric MDOF system
+    Symmetric MDOF system aka tri-diagonal system.
     '''
     name = 'Symmetric MDOF system'
 
@@ -35,45 +35,3 @@ class symetric(system):
         self.slopes = None
 
 
-# %% Some simple SDOFS
-
-
-class underdamped_SDOF(symetric):
-    '''
-    Underdamped linear
-    '''
-    name = 'Underdamped linear'
-
-    def __init__(self):
-        super().__init__(1, 1, 0.1, 100)
-
-
-class criticalydamped_SDOF(symetric):
-    '''
-    Critically damped linear    
-    '''
-    name = 'Underdamped linear'
-
-    def __init__(self):
-        super().__init__(1, 1, 20, 100)
-
-
-class overdamped_SDOF(symetric):
-    '''
-    Overdamped linear
-    '''
-    name = 'Underdamped linear'
-
-    def __init__(self):
-        super().__init__(1, 1, 20, 10)
-
-
-class duffing_SDOF(symetric):
-    '''
-    Duffing equation
-    '''
-    name = 'Duffing equation'
-
-    def __init__(self, k3n=1500):
-        super().__init__(1, 1, 0.1, 100)
-        self.N = nonlinear.cubic_stifness(1, k3n)
