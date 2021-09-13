@@ -3,16 +3,17 @@ class excitation():
     '''
     Bass class for excitations implemented in toybox, contains generic input filtering and conditioning methods
     '''    
-    def low_pass(self, cuttoff):
-        pass
+    # def low_pass(self, cutoff):
+    #     pass
 
-    def high_pass(self, cuttoff):
-        pass
+    # def high_pass(self, cutoff):
+    #     pass
 
-    def band_pass(self, cut_low, cut_high):
-        pass
+    # def band_pass(self, cut_low, cut_high):
+    #     pass
 
-
+    # def _apply_filters(self):
+    #     pass
 
 # %% Excitations
 class white_gaussian(excitation):

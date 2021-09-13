@@ -42,10 +42,12 @@ K = np.array([[20, -10],
 
 # Helper functions
 
-def _no_nans(data):
-    for key, array in data.items():
-        assert not any(np.isnan(array))
 
+def _no_nans(data):
+    res = True
+    for key, array in data.items():
+        res = res and not any(np.isnan(array))
+    return res
 
 # %% some very basic tests now
 
@@ -77,22 +79,45 @@ def test_readme_recipe():
     normalised_data = system.simulate((n_points, fs),  normalise=True)
     # de-normalise later if required
     data = system.denormalise()
+    _no_nans(data)
 
 
-# %% Test that bad inputs are caught
+def test_ts_vector_input():
+    system = tb.symetric(dofs=2, m=1, c=20, k=1e5)
+    system.excitation = [tb.forcings.white_gaussian(0, 1), None]
+    data = system.simulate(np.linspace(0, npts*dt, npts),  normalise=True)
+    assert _no_nans(data)    
+
+@pytest.mark.parametrize('I', integrators)
+def test_zero_solution(I):
+    system = tb.symetric(dofs=2, m=1, c=20, k=1e5)
+    data = system.simulate(td,  integrator=I, normalise=True)
+    assert _no_nans(data)
+
+
+def test_linear_modes():
+    system = tb.symetric(dofs=2, m=1, c=20, k=1e5)
+    es, evs = system.linear_modes()
+    assert len(es) == system.dofs
+    assert evs.shape == system.M.shape
+
+# %% Test that bad inputs / code are caught
+
 
 def test_errors_before_simulation():
-
     system = tb.system(M=M, C=C, K=K)
     system.N = cubic_stifness()
     with pytest.raises(UserWarning):
         system._to_dict()
-
     with pytest.raises(AttributeError):
         system.normalise()
-
     with pytest.raises(AttributeError):
         system.denormalise()
+
+
+def test_no_integrator():
+    with pytest.raises(UserWarning):
+        tb.integrators.integrator()(None, None, None)
 
 
 # %% Test various configurations of system / nonlinearity / forcing
@@ -104,7 +129,8 @@ def test_errors_before_simulation():
 def test_configurations(S, N, F, I):
     S = deepcopy(S)
     S.N = N
-
+    S.excitation = [None]*S.dofs
+    S.excitation[0] = F
     data = S.simulate(td, integrator=I)
     _no_nans(data)
 
@@ -117,10 +143,10 @@ def test_normalisation(S):
     S.excitation = [None]*S.dofs
     S.excitation[0] = white_gaussian(0, 1)
     data = S.simulate(td, normalise=True)
-    _no_nans(data)
+    assert _no_nans(data)
     for sig in S.response:
         assert (np.std(sig) - 1) < 1e-3
-        assert (np.mean(sig) - 0) < 1e-3 
+        assert (np.mean(sig) - 0) < 1e-3
     S.denormalise()
     for sig, scale, offset in zip(S.response, S.scale, S.offset):
         assert (np.std(sig) - scale) < 1e-3

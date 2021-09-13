@@ -21,11 +21,11 @@ class integrator():
     def __init__(self):
         pass
 
-    def __call__(self):
-        return self.sim()
+    def __call__(self, *args, **kwargs):
+        return self.sim(*args, **kwargs)
 
     def sim(self, vector_field, w0, ts):
-        raise NotImplementedError('No integrator selected')
+        raise UserWarning('No integrator selected, this is the base class')
 
 
 # %% Integrators
@@ -86,7 +86,7 @@ class scipy(integrator):
                 vector_field, tspan, w0, t_eval=ts, **self.args)
             return self.full_res.y
         elif self.solver.__name__ == 'odeint':
-            self.full_res = self.solver(
-                vector_field, w0, ts, tfirst=True, **self.args)
-            return self.full_res.y
+            y, self.full_res = self.solver(
+                vector_field, w0, ts, tfirst=True, full_output=True, **self.args)
+            return y.T
 

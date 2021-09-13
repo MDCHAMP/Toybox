@@ -58,47 +58,56 @@ class system():
         self.excitation = [None] * self.dofs
 
     def get_slopes(self, x_t=None):
-        if x_t is None: x_t = lambda t: np.zeros((self.dofs,)) #Handle the no forcing case
-        if self.N is None: self.N =lambda _, t, _y, _ydot: np.zeros((self.dofs,)) # Handle the non nonlinearity case
-        
+        if x_t is None:
+            # Handle the no forcing case
+            def x_t(t): return np.zeros((self.dofs,))
+        if self.N is None:
+            self.N = lambda _, t, _y, _ydot: np.zeros(
+                (self.dofs,))  # Handle the non nonlinearity case
+
         def vector_field(t, w):
-            x = x_t(t) # Get x from x_t
+            x = x_t(t)  # Get x from x_t
             # Recover displacements and velocities from current timestep
             _y = w[0::2]
             _ydot = w[1::2]
             # Calculate the derivatives of _y and _ydot and interleave vectors to form d w / dt
-            dw = np.zeros_like(w) # pre-allocate 
+            dw = np.zeros_like(w)  # pre-allocate
             dw[0::2] = _ydot
-            dw[1::2] = np.linalg.inv(self.M) @ (x - (self.C@_ydot) - self.K@_y - self.N(self, t, _y, _ydot))
+            dw[1::2] = np.linalg.inv(
+                self.M) @ (x - (self.C@_ydot) - self.K@_y - self.N(self, t, _y, _ydot))
             return dw
-        
+
         return vector_field
 
-    def simulate(self, ts, x_t=None,  w0=None, integrator=None, normalise=False):
+    def simulate(self, ts, x_t=None, w0=None, integrator=None, normalise=False):
         #  Time vector: self.ts ndarray (n, 1)
         if type(ts) is tuple:
             npts, dt = ts
             self.ts = np.linspace(0, npts*dt, npts)
         else:
-            npts = len(ts)
-            fs   = 1 / (ts[1] - ts[0])   
+            self.ts = ts
         # Excitations: self.x_t callable x_t(t) -> x
         if x_t is None:
-            try:
-                self.shaker = shaker(self.excitation)
-            except AttributeError:
+            self.shaker = shaker(self.excitation)
+            if np.all(self.excitation is None):
                 warnings.warn(
-                    'No Excitations provided proceeding without external forcing', UserWarning)
-                self.shaker = shaker([None]*self.dofs)
-            self.xs = self.shaker.generate(self.ts) # Save the forcing history
+                    'No Excitations provided proceeding without external  (free response)', UserWarning)
+            self.shaker = shaker(self.excitation)
+            # Save the forcing time series
+            self.xs = self.shaker.generate(self.ts)
+            # Get the callable forcing
             x_t = self.shaker.get_x_t(self.ts, self.xs)
         else:
-            self.xs = np.array([x_t(t) for t in self.ts])[:, None] # Add a dummy index to make the integrators happy later
+            # Add a dummy index to make the integrators happy later
+            self.xs = np.array([x_t(t) for t in self.ts])[:, None]
         # ICs
         if w0 is None:
             warnings.warn(
                 'No initial conditions provided proceeding with zero initial condition', UserWarning)
             w0 = np.zeros((self.dofs*2,))
+            if np.all(self.excitation is None):
+                warnings.warn(
+                    'No Excitation and zero initial condition supplied! This will return the zero solution if you are lucky and bugs if you are not', UserWarning)
         # d w / dt
         if self.slopes is None:
             self.slopes = self.get_slopes(x_t)
@@ -116,6 +125,8 @@ class system():
         try:
             self.offset = np.mean(self.response, axis=1)
             self.scale = np.std(self.response, axis=1)
+            if all(self.scale == 0):
+                self.scale = np.ones_like(self.scale) # Catch pesky zero solutions here
             self.response = ((self.response.T - self.offset) / self.scale).T
         except AttributeError:
             raise AttributeError('Not simulated yet')
@@ -134,13 +145,10 @@ class system():
         # Return (eigenvectors, eigenvalues) of the underlying linear system (No damping)
         return np.linalg.eig(np.dot(np.linalg.inv(self.M), self.K))
 
-    def linear_exact(self, ts):
-        # Return exact (within numerical tolerance) solution of underlying linear system
-        raise NotImplementedError
-
     def _to_dict(self):
         if not hasattr(self, 'response'):
-            raise UserWarning('System not simulated cannot produce results. Call System.simulate()')
+            raise UserWarning(
+                'System not simulated cannot produce results. Call System.simulate()')
         ys = self.response[0::2]
         ydots = self.response[1::2]
         out = {}
@@ -150,4 +158,3 @@ class system():
             out[f'y{doff}'] = y
             out[f'ydot{doff}'] = ydot
         return out
-
