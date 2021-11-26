@@ -163,7 +163,10 @@ def test_scipy_filter(S, w):
     
     S = deepcopy(S)
     S.excitation = [None]*S.dofs
-    S.excitation[0] = white_gaussian(0, 1).scipy_filter(a, b, lfilter)
+
+    x = white_gaussian(0, 1).scipy_filter(a, b, lfilter)
+    assert hasattr(x, '_filt')
+    S.excitation[0] = x
 
     
 

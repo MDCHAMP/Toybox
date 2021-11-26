@@ -8,7 +8,8 @@ class excitation():
         '''wrapper for SciPy filters'''
         def _filt(x):
             return self.filt_fun(a, b, x)
-        self._filter = _filt
+        self._filt = _filt
+        return self # important for call signature
 
     def generate(self, ts):
         if hasattr(self, '_filt'):
