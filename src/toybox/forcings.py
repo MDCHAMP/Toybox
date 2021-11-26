@@ -3,17 +3,19 @@ class excitation():
     '''
     Bass class for excitations implemented in toybox, contains generic input filtering and conditioning methods
     '''    
-    # def low_pass(self, cutoff):
-    #     pass
+    
+    def scipy_filter(self, a, b, filt_fun):
+        '''wrapper for SciPy filters'''
+        def _filt(x):
+            return self.filt_fun(a, b, x)
+        self._filter = _filt
 
-    # def high_pass(self, cutoff):
-    #     pass
+    def generate(self, ts):
+        if hasattr(self, '_filt'):
+            return self._filt(self._generate(ts))
+        else:
+            return self._generate(ts)
 
-    # def band_pass(self, cut_low, cut_high):
-    #     pass
-
-    # def _apply_filters(self):
-    #     pass
 
 # %% Excitations
 class white_gaussian(excitation):
@@ -22,9 +24,10 @@ class white_gaussian(excitation):
         self.u = u
         self.sig = sig
 
-    def generate(self, ts):
+    def _generate(self, ts):
         n = len(ts)
         return np.random.normal(self.u, self.sig, size=(n, 1))
+
 
 class sinusoid(excitation):
     
@@ -33,12 +36,13 @@ class sinusoid(excitation):
         self.w = w
         self.phi = phi
 
-    def generate(self, ts):
+    def _generate(self, ts):
         return self.a * np.sin(self.w*ts - self.phi)
 
 
 class impact(excitation):
     pass
+
 
 # %% MDOF multi-DOF excitations 
 

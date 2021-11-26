@@ -4,6 +4,7 @@ import numpy as np
 from copy import deepcopy
 
 from scipy.integrate import solve_ivp
+from scipy.signal import butter, lfilter
 
 import toybox as tb
 from toybox.premade import *
@@ -151,3 +152,19 @@ def test_normalisation(S):
     for sig, scale, offset in zip(S.response, S.scale, S.offset):
         assert (np.std(sig) - scale) < 1e-3
         assert (np.mean(sig) - offset) < 1e-3
+
+
+@pytest.mark.parametrize('S', systems)
+@pytest.mark.parametrize('w', [10,20,50,80])
+def test_scipy_filter(S, w):
+    fs = 500
+    normal_cutoff = w / (0.5 * fs)
+    b, a = butter(4, normal_cutoff, btype='low', analog=False)
+    
+    S = deepcopy(S)
+    S.excitation = [None]*S.dofs
+    S.excitation[0] = white_gaussian(0, 1).scipy_filter(a, b, lfilter)
+
+    
+
+
