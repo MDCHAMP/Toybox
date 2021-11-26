@@ -4,15 +4,14 @@ class excitation():
     Bass class for excitations implemented in toybox, contains generic input filtering and conditioning methods
     '''    
     
-    def scipy_filter(self, a, b, filt_fun):
+    def apply_filter(self, filt_fun):
         '''wrapper for SciPy filters'''
-        def _filt(x):
-            return self.filt_fun(a, b, x)
-        self._filt = _filt
+        self._filt = filt_fun
         return self # important for call signature
 
     def generate(self, ts):
         if hasattr(self, '_filt'):
+            
             return self._filt(self._generate(ts))
         else:
             return self._generate(ts)

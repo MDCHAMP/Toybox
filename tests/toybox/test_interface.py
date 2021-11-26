@@ -4,7 +4,7 @@ import numpy as np
 from copy import deepcopy
 
 from scipy.integrate import solve_ivp
-from scipy.signal import butter, lfilter
+from scipy.signal import butter, lfilter, welch
 
 import toybox as tb
 from toybox.premade import *
@@ -154,20 +154,27 @@ def test_normalisation(S):
         assert (np.mean(sig) - offset) < 1e-3
 
 
-@pytest.mark.parametrize('S', systems)
-@pytest.mark.parametrize('w', [10,20,50,80])
-def test_scipy_filter(S, w):
+
+def test_apply_filter():
+    n = 1000
     fs = 500
-    normal_cutoff = w / (0.5 * fs)
-    b, a = butter(4, normal_cutoff, btype='low', analog=False)
-    
-    S = deepcopy(S)
-    S.excitation = [None]*S.dofs
+    wn = 50
+    ts = np.linspace(0, n/fs, num=n)
+    b,a = butter(2, wn/(fs*0.5))
 
-    x = white_gaussian(0, 1).scipy_filter(a, b, lfilter)
-    assert hasattr(x, '_filt')
-    S.excitation[0] = x
-
+    def my_filter(x):
+        return lfilter(b,a,x,axis=0)
     
+    x = white_gaussian(0, 1)
+    x1 = x.generate(ts)
+    
+    x.apply_filter(my_filter)
+    x2 = x.generate(ts)
+
+
+    f1, p1 = welch(x1, fs, axis=0)
+    f2, p2 = welch(x2, fs, axis=0)
+
+    assert np.all( p2[f2 > (wn*1.5)] <= p1[f1 > (wn*1.5)]) # filtered fs are lower
 
 
