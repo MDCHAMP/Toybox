@@ -13,6 +13,7 @@ Feel free to raise any issues of make suggestions.
 
 ```python
 import toybox as tb
+import numpy as np
 
 # Initialise a linear symetric sytem
 system = tb.symetric(dofs=2, m=1, c=20, k=1e5)
@@ -28,12 +29,12 @@ system.N = quadratic_cubic_stiffness_2dof_single
 system.excitation = [tb.forcings.white_gaussian(0, 1), None]
 
 # Simulate
-n_points = 1e3
+n_points = int(1e3)
 fs = 1/500
 normalised_data = system.simulate((n_points, fs),  normalise=True)
 
 # Denormalise later if required
-data = sytem.denormalise()
+data = stem.denormalise()
 ```
 
 `data` is a python `dict` with time series as follows:
@@ -50,13 +51,13 @@ Y'<sub>d</sub>(t) | Velocity at location *d*  | `'ydot{d}'`
 
 ### Arbitrary systems
 
-`toybox.system` Allows the specification of arbitrary M, C and K matrices.
+`toybox.system(ndofs, M, C, K)` Allows the specification of arbitrary M, C and K matrices.
 
 ### Arbitrary forcing
 
 Set `your_system.excitation` to a per degree-of-freedom iterable. Entries can include either:
 
-- Premade excitations (such as white_gaussian or sinusoidal)
+- Premade excitations (such as `forcings.white_gaussian` or `forcings.sinusoidal`)
 - Timeseries (with shape `(n_points, ndofs)`)
 - `None` for unforced degrees of freedom.
 
